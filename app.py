@@ -25,11 +25,7 @@ def generate_mod():
             messages=[
                 {
                     "role": "system", 
-                    "content": """You are a Gorilla Tag Mod developer. 
-                    - Write ONLY C# code for BepInEx. 
-                    - For PC/Controller support: Use UnityEngine.Input for axis and button mapping (e.g., 'joystick button 0').
-                    - For Emotes: Use simple Transform rotations or animations.
-                    - Reference: UnityEngine, UnityEngine.InputModule, BepInEx, and Utilla."""
+                    "content": "Write ONLY C# code for a Gorilla Tag BepInEx mod. No markdown. Use UnityEngine, BepInEx, and Utilla. For PC/Controller, use UnityEngine.Input."
                 },
                 {"role": "user", "content": user_prompt}
             ],
@@ -43,7 +39,6 @@ def generate_mod():
         f.write(csharp_code)
 
     try:
-        # Added UnityEngine.InputModule.dll to the list below
         compile_process = subprocess.run([
             "mcs", "-target:library", 
             "-r:UnityEngine.dll,UnityEngine.CoreModule.dll,UnityEngine.InputModule.dll,BepInEx.dll,Utilla.dll", 
@@ -51,11 +46,21 @@ def generate_mod():
         ], capture_output=True, text=True)
         
         if compile_process.returncode != 0:
-            return jsonify({"error": compile_process.stderr}), 500
+            return jsonify({"error": compile_process.stderr, "code": csharp_code}), 500
             
+        # We send the code along with the success response now
         return send_file("GTMaker_Mod.dll", as_attachment=True)
+
     except Exception as e:
         return jsonify({"error": f"Server Error: {str(e)}"}), 500
+
+# NEW ROUTE: This lets the site preview the code without downloading
+@app.route('/get-last-code', methods=['GET'])
+def get_last_code():
+    if os.path.exists("Mod.cs"):
+        with open("Mod.cs", "r") as f:
+            return jsonify({"code": f.read()})
+    return jsonify({"error": "No code found"}), 404
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000)
