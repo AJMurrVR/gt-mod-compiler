@@ -9,7 +9,7 @@ CORS(app) # This allows your Google Site to talk to this server
 
 # Initialize Groq Client
 # Tip: Make sure your API Key is active at console.groq.com
-client = Groq(api_key="YOUR_GROQ_API_KEY_HERE")
+client = Groq(api_key="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")
 
 @app.route('/')
 def health_check():
