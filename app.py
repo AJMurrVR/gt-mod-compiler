@@ -5,11 +5,11 @@ import os
 from groq import Groq
 
 app = Flask(__name__)
-CORS(app)  # Allows your Google Site to talk to this server
+CORS(app) # This allows your Google Site to talk to this server
 
 # Initialize Groq Client
-# Tip: It's safer to use an environment variable for your key!
-client = Groq(api_key="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")
+# Tip: Make sure your API Key is active at console.groq.com
+client = Groq(api_key="YOUR_GROQ_API_KEY_HERE")
 
 @app.route('/')
 def health_check():
@@ -24,22 +24,24 @@ def generate_mod():
         return jsonify({"error": "No prompt provided"}), 400
 
     # 1. Ask the AI to write the C# code
+    # We are using 'llama-3.3-70b-versatile' as the older model was retired
     try:
         chat_completion = client.chat.completions.create(
             messages=[
                 {
-                    "role": "system",
+                    "role": "system", 
                     "content": "You are a Gorilla Tag Mod developer. Write only the C# code for a BepInEx mod using Utilla. No conversational text, only the code."
                 },
                 {
-                    "role": "user",
+                    "role": "user", 
                     "content": user_prompt
                 }
             ],
-            model="llama3-8b-8192",
+            model="llama-3.3-70b-versatile",
         )
         csharp_code = chat_completion.choices[0].message.content
     except Exception as e:
+        # This sends the "Model Decommissioned" or "API Key" error to your site
         return jsonify({"error": f"AI Error: {str(e)}"}), 500
 
     # 2. Save the AI code to a temporary file
@@ -47,24 +49,26 @@ def generate_mod():
         f.write(csharp_code)
 
     # 3. Compile the .cs file into a .dll
-    # This command uses 'mcs' (Mono) to link your uploaded Gorilla Tag DLLs
+    # We capture the output so we can see why it fails (Missing DLLs, etc.)
     try:
-        subprocess.run([
+        compile_process = subprocess.run([
             "mcs", 
             "-target:library", 
             "-r:UnityEngine.dll,UnityEngine.CoreModule.dll,BepInEx.dll,Utilla.dll", 
             "-out:GTMaker_Mod.dll", 
             "Mod.cs"
-        ], check=True)
+        ], capture_output=True, text=True)
         
+        if compile_process.returncode != 0:
+            # If the C# code is bad, send the specific error to the website
+            return jsonify({"error": compile_process.stderr}), 500
+            
         # 4. Send the finished .dll file back to the website user
         return send_file("GTMaker_Mod.dll", as_attachment=True)
 
-    except subprocess.CalledProcessError as e:
-        return jsonify({"error": "Compilation failed. The AI might have written buggy code."}), 500
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Server Error: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    # Koyeb and other hosts usually look for port 8000 or 8080
+    # Koyeb uses port 8000 by default
     app.run(host='0.0.0.0', port=8000)
