@@ -9,7 +9,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Initialize Groq Client
-client = Groq(api_key="YOUR_GROQ_API_KEY_HERE")
+client = Groq(api_key="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")
 
 def clean_code(raw_code):
     # This removes ```csharp and ``` blocks that cause the CS1056 error
