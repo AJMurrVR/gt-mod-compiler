@@ -8,9 +8,11 @@ from groq import Groq
 app = Flask(__name__)
 CORS(app)
 
+# Use your active Groq API Key
 client = Groq(api_key="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")
 
 def clean_code(raw_code):
+    # Fixes CS1056: Strips Markdown blocks that cause the 'Unexpected character' error
     clean = re.sub(r'```[a-zA-Z]*', '', raw_code)
     clean = clean.replace('```', '')
     return clean.strip()
@@ -21,11 +23,16 @@ def generate_mod():
     user_prompt = data.get('prompt')
 
     try:
+        # Use the updated model llama-3.3-70b-versatile
         chat_completion = client.chat.completions.create(
             messages=[
                 {
                     "role": "system", 
-                    "content": "Write ONLY C# code for a Gorilla Tag BepInEx mod. No markdown. Use UnityEngine, BepInEx, and Utilla. For PC/Controller, use UnityEngine.Input."
+                    "content": """Write ONLY C# code for a Gorilla Tag BepInEx mod. 
+                    - Do NOT use Markdown code blocks or backticks.
+                    - Use 'using UnityEngine;' and 'using BepInEx;'.
+                    - For controller support, use standard 'UnityEngine.Input'.
+                    - Ensure every class inherits from 'BaseUnityPlugin'."""
                 },
                 {"role": "user", "content": user_prompt}
             ],
@@ -39,22 +46,20 @@ def generate_mod():
         f.write(csharp_code)
 
     try:
+        # We add -r:mscorlib.dll to fix the 'System.Object' error seen in your 5th image
         compile_process = subprocess.run([
             "mcs", "-target:library", 
-            "-r:UnityEngine.dll,UnityEngine.CoreModule.dll,UnityEngine.InputModule.dll,BepInEx.dll,Utilla.dll", 
+            "-r:mscorlib.dll,UnityEngine.dll,UnityEngine.CoreModule.dll,UnityEngine.InputModule.dll,BepInEx.dll,Utilla.dll", 
             "-out:GTMaker_Mod.dll", "Mod.cs"
         ], capture_output=True, text=True)
         
         if compile_process.returncode != 0:
             return jsonify({"error": compile_process.stderr, "code": csharp_code}), 500
             
-        # We send the code along with the success response now
         return send_file("GTMaker_Mod.dll", as_attachment=True)
-
     except Exception as e:
         return jsonify({"error": f"Server Error: {str(e)}"}), 500
 
-# NEW ROUTE: This lets the site preview the code without downloading
 @app.route('/get-last-code', methods=['GET'])
 def get_last_code():
     if os.path.exists("Mod.cs"):
