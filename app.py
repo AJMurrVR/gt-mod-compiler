@@ -8,11 +8,11 @@ from groq import Groq
 app = Flask(__name__)
 CORS(app)
 
-# Use your active Groq API Key
+# Important: Make sure your Groq API Key is pasted here!
 client = Groq(api_key="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")
 
 def clean_code(raw_code):
-    # Fixes CS1056: Strips Markdown blocks that cause the 'Unexpected character' error
+    # This specifically fixes the "CS1056: Unexpected character" error from your 2nd image
     clean = re.sub(r'```[a-zA-Z]*', '', raw_code)
     clean = clean.replace('```', '')
     return clean.strip()
@@ -23,16 +23,16 @@ def generate_mod():
     user_prompt = data.get('prompt')
 
     try:
-        # Use the updated model llama-3.3-70b-versatile
+        # Using the updated model to fix the "Decommissioned" error from your 1st image
         chat_completion = client.chat.completions.create(
             messages=[
                 {
                     "role": "system", 
-                    "content": """Write ONLY C# code for a Gorilla Tag BepInEx mod. 
-                    - Do NOT use Markdown code blocks or backticks.
-                    - Use 'using UnityEngine;' and 'using BepInEx;'.
-                    - For controller support, use standard 'UnityEngine.Input'.
-                    - Ensure every class inherits from 'BaseUnityPlugin'."""
+                    "content": """You are a Gorilla Tag Mod developer. 
+                    - Write ONLY C# code for BepInEx. 
+                    - DO NOT use markdown code blocks or backticks.
+                    - DO NOT use 'UnityEngine.InputSystem'. Use standard 'UnityEngine.Input'.
+                    - Start code immediately with 'using' statements."""
                 },
                 {"role": "user", "content": user_prompt}
             ],
@@ -46,7 +46,7 @@ def generate_mod():
         f.write(csharp_code)
 
     try:
-        # We add -r:mscorlib.dll to fix the 'System.Object' error seen in your 5th image
+        # We add mscorlib.dll to fix the 'System.Object' error seen in your last 3 images
         compile_process = subprocess.run([
             "mcs", "-target:library", 
             "-r:mscorlib.dll,UnityEngine.dll,UnityEngine.CoreModule.dll,UnityEngine.InputModule.dll,BepInEx.dll,Utilla.dll", 
@@ -57,15 +57,9 @@ def generate_mod():
             return jsonify({"error": compile_process.stderr, "code": csharp_code}), 500
             
         return send_file("GTMaker_Mod.dll", as_attachment=True)
+
     except Exception as e:
         return jsonify({"error": f"Server Error: {str(e)}"}), 500
-
-@app.route('/get-last-code', methods=['GET'])
-def get_last_code():
-    if os.path.exists("Mod.cs"):
-        with open("Mod.cs", "r") as f:
-            return jsonify({"code": f.read()})
-    return jsonify({"error": "No code found"}), 404
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8000)
